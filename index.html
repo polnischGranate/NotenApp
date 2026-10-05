@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="NotenRechner: Notendurchschnitt berechnen, Gewichtungen berücksichtigen und herausfinden, welche Note du für deinen gewünschten Ziel-Durchschnitt brauchst. Kostenlos und direkt im Browser.">
+  <meta name="robots" content="index,follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="NotenRechner – Noten einfach berechnen">
+  <meta property="og:description" content="Berechne deinen Notendurchschnitt, berücksichtige Gewichtungen und finde heraus, welche Note du für dein Ziel brauchst.">
+  <meta property="og:url" content="/notenrechner/">
+  <meta property="og:site_name" content="NotenRechner">
+  <meta name="theme-color" content="#2563eb">
+  <title>NotenRechner – Notendurchschnitt berechnen</title>
+  <link rel="canonical" href="/">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav-wrap">
+      <a class="brand" href="index.html" aria-label="NotenRechner Startseite">Noten<span>Rechner</span></a>
+      <nav aria-label="Hauptnavigation">
+        <a href="#rechner">Rechner</a>
+        <a href="#zielnote">Zielnote</a>
+        <a href="#datenschutz">Datenschutz</a>
+      </nav>
+      <button id="themeToggle" class="icon-button" type="button" aria-label="Dark Mode umschalten" title="Dark Mode umschalten">◐</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-inner">
+        <div>
+          <p class="eyebrow">Kostenlos · lokal · ohne Konto</p>
+          <h1>NotenRechner – Noten einfach berechnen</h1>
+          <p class="hero-copy">Berechne deinen Notendurchschnitt, berücksichtige Gewichtungen und finde heraus, welche Note du für dein Ziel brauchst.</p>
+          <a class="button primary" href="#rechner">Noten berechnen</a>
+        </div>
+        <div class="hero-card" aria-label="Vorschau des Rechners">
+          <span>Dein Durchschnitt</span>
+          <strong id="heroAverage">–</strong>
+          <small>Wird automatisch berechnet</small>
+        </div>
+      </div>
+    </section>
+
+    <section id="rechner" class="section">
+      <div class="container">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">1. Notenliste</p>
+            <h2>Notendurchschnitt berechnen</h2>
+          </div>
+          <div class="mode-switch" role="group" aria-label="Berechnungsmethode">
+            <button class="mode-button active" data-mode="weighted" type="button">Gewichtet</button>
+            <button class="mode-button" data-mode="simple" type="button">Gleich gewichtet</button>
+          </div>
+        </div>
+
+        <div class="calculator-grid">
+          <div class="panel">
+            <div id="gradeList" class="grade-list" aria-live="polite"></div>
+            <button id="addGrade" class="button secondary full-width" type="button">+ Fach hinzufügen</button>
+            <div class="form-actions">
+              <button id="clearAll" class="button ghost danger" type="button">Alle Daten löschen</button>
+              <label class="save-toggle"><input id="saveLocal" type="checkbox"> Eingaben lokal speichern</label>
+            </div>
+          </div>
+
+          <aside class="result-card">
+            <span class="result-label">Aktueller Durchschnitt</span>
+            <strong id="averageResult">–</strong>
+            <p id="averageDetails">Füge mindestens eine gültige Note hinzu.</p>
+            <div class="stat-row">
+              <span>Gültige Noten</span><strong id="validCount">0</strong>
+            </div>
+            <div class="stat-row">
+              <span>Gesamtgewicht</span><strong id="totalWeight">0</strong>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section id="zielnote" class="section alt">
+      <div class="container narrow">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">2. Zielnote</p>
+            <h2>Welche Note brauche ich?</h2>
+          </div>
+        </div>
+        <div class="panel">
+          <form id="targetForm" novalidate>
+            <div class="form-grid">
+              <label>Aktueller Durchschnitt
+                <input id="currentAverage" inputmode="decimal" type="number" min="1" max="6" step="0.01" placeholder="z. B. 2,40" required>
+              </label>
+              <label>Bisherige Anzahl / Gewichtung
+                <input id="previousWeight" inputmode="decimal" type="number" min="0.01" step="0.01" placeholder="z. B. 5" required>
+              </label>
+              <label>Gewünschter Ziel-Durchschnitt
+                <input id="targetAverage" inputmode="decimal" type="number" min="1" max="6" step="0.01" placeholder="z. B. 2,00" required>
+              </label>
+              <button class="button primary" type="submit">Zielnote berechnen</button>
+            </div>
+          </form>
+          <div id="targetResult" class="target-result" hidden></div>
+          <p class="notice">Hinweis: Das ist eine mathematische Näherung für eine weitere gleich gewichtete Leistung. Schulen können unterschiedliche Gewichtungen, Rundungsregeln und Notenschlüssel verwenden.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container content-grid">
+        <article>
+          <p class="eyebrow">Kurz erklärt</p>
+          <h2>Notendurchschnitt einfach berechnen</h2>
+          <p>Beim einfachen Notendurchschnitt zählt jede eingegebene Note gleich. Beim gewichteten Durchschnitt zählt eine Note entsprechend ihrer Gewichtung stärker oder schwächer.</p>
+          <p>Der NotenRechner arbeitet standardmäßig nur in deinem Browser. Du brauchst kein Konto und musst keine persönlichen Daten eingeben. Wenn du die lokale Speicherung aktivierst, werden deine Eingaben im Speicher deines Browsers abgelegt.</p>
+        </article>
+        <div class="ad-placeholder" aria-label="Platzhalter für spätere Werbung">
+          <span>Werbeplatzhalter</span>
+          <small>Hier kann später nach rechtlicher und technischer Prüfung Werbung eingebunden werden.</small>
+        </div>
+      </div>
+    </section>
+
+    <section id="datenschutz" class="section alt">
+      <div class="container">
+        <div class="seo-links">
+          <a href="datenschutz.html">Datenschutzerklärung</a>
+          <a href="impressum.html">Impressum</a>
+          <a href="kontakt.html">Kontakt</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <span>© NotenRechner</span>
+      <nav aria-label="Footer">
+        <a href="impressum.html">Impressum</a>
+        <a href="datenschutz.html">Datenschutz</a>
+        <a href="kontakt.html">Kontakt</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
