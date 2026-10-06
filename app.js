@@ -1,208 +1,98 @@
-(() => {
-  "use strict";
+'use strict';
+// ---------- Berechnungen (rein, testbar) ----------
+const parse = v => { const n = parseFloat(String(v ?? '').trim().replace(',', '.')); return Number.isFinite(n) ? n : NaN; };
+const validGrade = g => g >= 1 && g <= 6;
+const round2 = x => Math.round((x + Number.EPSILON) * 100) / 100;
+const fmt = x => round2(x).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const STORAGE_KEY = "notenrechner-v1";
-  const DEFAULT_GRADE = () => ({ id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()), subject: "", grade: "", weight: "1" });
-  let state = {
-    mode: "weighted",
-    grades: [DEFAULT_GRADE()],
-    saveLocal: false
-  };
-
-  const $ = (selector) => document.querySelector(selector);
-  const gradeList = $("#gradeList");
-
-  function parseNumber(value) {
-    if (typeof value !== "string") return Number(value);
-    return Number(value.trim().replace(",", "."));
+function average(rows, weighted) {
+  let sum = 0, wsum = 0, count = 0;
+  for (const r of rows) {
+    const g = parse(r.grade), w = weighted ? parse(r.weight) : 1;
+    if (!validGrade(g) || !(w > 0)) continue;
+    sum += g * w; wsum += w; count++;
   }
+  return wsum ? { avg: sum / wsum, wsum, count } : null;
+}
+// Note x der nächsten Leistung (Gewicht w), damit (avg*n + x*w)/(n+w) = target
+function neededGrade(avg, n, target, w = 1) {
+  if (![avg, n, target, w].every(Number.isFinite) || !validGrade(avg) || !validGrade(target) || n <= 0 || w <= 0) return null;
+  return (target * (n + w) - avg * n) / w;
+}
 
-  function validGrade(grade) {
-    return Number.isFinite(grade) && grade >= 1 && grade <= 6;
+// ---------- Oberfläche ----------
+function init() {
+  const $ = s => document.querySelector(s);
+  const KEY = 'notenrechner-v1';
+  const blank = () => ({ name: '', grade: '', weight: '1' });
+  const list = $('#rows'), out = $('#result'), store = $('#store');
+  let weighted = true, rows = [blank(), blank(), blank()];
+
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.rows)) { rows = s.rows; weighted = s.weighted !== false; store.checked = true; } } catch (e) {}
+  document.querySelector(`input[name=mode][value=${weighted ? 'w' : 's'}]`).checked = true;
+
+  function save() {
+    try { store.checked ? localStorage.setItem(KEY, JSON.stringify({ rows, weighted })) : localStorage.removeItem(KEY); } catch (e) {}
   }
-
-  function validWeight(weight) {
-    return Number.isFinite(weight) && weight > 0;
-  }
-
-  function format(value) {
-    return Number.isFinite(value) ? value.toFixed(2).replace(".", ",") : "–";
-  }
-
-  function escapeHtml(value) {
-    return String(value)
-      .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;").replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
   function render() {
-    gradeList.innerHTML = "";
-    state.grades.forEach((item, index) => {
-      const row = document.createElement("div");
-      row.className = "grade-row";
-      row.dataset.id = item.id;
-      row.innerHTML = `
-        <div class="row-number">${index + 1}</div>
-        <label class="field subject-field">
-          <span>Fach</span>
-          <input data-field="subject" type="text" maxlength="80" value="${escapeHtml(item.subject)}" placeholder="z. B. Mathe" autocomplete="off">
-        </label>
-        <label class="field">
-          <span>Note</span>
-          <input data-field="grade" type="number" min="1" max="6" step="0.01" value="${escapeHtml(item.grade)}" placeholder="1–6" inputmode="decimal">
-        </label>
-        <label class="field weight-field">
-          <span>Gewichtung</span>
-          <input data-field="weight" type="number" min="0.01" step="0.01" value="${escapeHtml(item.weight)}" placeholder="1" inputmode="decimal" ${state.mode === "simple" ? "disabled" : ""}>
-        </label>
-        <button class="icon-delete" data-action="delete" type="button" aria-label="Fach löschen">×</button>
-        <p class="row-error" data-error></p>
-      `;
-      gradeList.appendChild(row);
+    list.replaceChildren();
+    list.classList.toggle('simple', !weighted);
+    rows.forEach((r, i) => {
+      const li = document.createElement('li'); li.className = 'row';
+      [['name', 'Fach', 'text', 'Fach'], ['grade', 'Note', 'text', 'Note'], ['weight', 'Gewichtung', 'text', 'Gew.']].forEach(([f, label, type, ph]) => {
+        const inp = document.createElement('input');
+        inp.type = type; inp.value = r[f]; inp.placeholder = ph; inp.className = 'f-' + f;
+        inp.setAttribute('aria-label', `${label} ${i + 1}`);
+        if (f !== 'name') inp.inputMode = 'decimal'; else inp.maxLength = 40;
+        inp.addEventListener('input', () => { r[f] = inp.value; update(); });
+        li.append(inp);
+      });
+      const del = document.createElement('button');
+      del.type = 'button'; del.className = 'btn ghost'; del.textContent = '×';
+      del.setAttribute('aria-label', `Fach ${i + 1} löschen`);
+      del.addEventListener('click', () => { rows.splice(i, 1); render(); update(); });
+      li.append(del); list.append(li);
     });
-    document.querySelectorAll(".mode-button").forEach(btn => {
-      btn.classList.toggle("active", btn.dataset.mode === state.mode);
+    update();
+  }
+  function update() {
+    [...list.children].forEach((li, i) => {
+      const g = rows[i].grade.trim(), w = rows[i].weight.trim();
+      li.querySelector('.f-grade').setAttribute('aria-invalid', g !== '' && !validGrade(parse(g)));
+      li.querySelector('.f-weight').setAttribute('aria-invalid', weighted && w !== '' && !(parse(w) > 0));
     });
-    $("#saveLocal").checked = state.saveLocal;
-    calculate();
+    const a = average(rows, weighted);
+    out.textContent = a
+      ? `Ø ${fmt(a.avg)} · ${weighted ? 'gewichtet' : 'alle gleich gewichtet'}, ${a.count} ${a.count === 1 ? 'Note' : 'Noten'}`
+      : 'Trage mindestens eine Note zwischen 1 und 6 ein (Komma oder Punkt).';
+    save();
   }
+  document.querySelectorAll('input[name=mode]').forEach(m => m.addEventListener('change', () => { weighted = m.value === 'w'; render(); }));
+  $('#add').addEventListener('click', () => { rows.push(blank()); render(); list.lastChild.querySelector('input').focus(); });
+  $('#example').addEventListener('click', () => { rows = [['Mathe', '2', '2'], ['Deutsch', '1', '1'], ['Englisch', '3', '1']].map(([name, grade, weight]) => ({ name, grade, weight })); render(); });
+  $('#clear').addEventListener('click', () => {
+    if (!confirm('Alle eingegebenen Daten löschen?')) return;
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    rows = [blank(), blank(), blank()]; store.checked = false; $('#goal').reset(); render(); goal();
+  });
+  store.addEventListener('change', save);
 
-  function updateItem(row) {
-    const item = state.grades.find(g => g.id === row.dataset.id);
-    if (!item) return;
-    row.querySelectorAll("[data-field]").forEach(input => item[input.dataset.field] = input.value);
+  // Zielnote
+  const gout = $('#goal-result');
+  function goal() {
+    const v = id => parse($(id).value);
+    const [avg, n, w, t] = [v('#g-avg'), v('#g-n'), v('#g-w'), v('#g-t')];
+    if ([avg, n, t].some(Number.isNaN)) { gout.textContent = 'Fülle Durchschnitt, Gewichtung bisheriger Noten und Zielnote aus.'; return; }
+    const x = neededGrade(avg, n, t, Number.isNaN(w) ? 1 : w);
+    if (x === null) gout.textContent = 'Bitte gültige Werte eingeben: Noten von 1 bis 6, Gewichtungen größer als 0.';
+    else if (x > 6) gout.textContent = `Dein Ziel ${fmt(t)} ist rechnerisch schon sicher – selbst mit einer 6 bleibst du darunter.`;
+    else if (x < 1) gout.textContent = `Das Ziel ${fmt(t)} ist mit der nächsten Leistung nicht mehr erreichbar – selbst eine 1 reicht rechnerisch nicht.`;
+    else gout.textContent = `Du brauchst ungefähr eine ${fmt(x)} (rechnerisch höchstens ${(Math.floor(x * 10) / 10).toLocaleString('de-DE', { minimumFractionDigits: 1 })}), um im Schnitt ${fmt(t)} zu erreichen.`;
   }
+  $('#goal').addEventListener('input', goal);
+  $('#goal').addEventListener('submit', e => e.preventDefault());
+  render(); goal();
+}
 
-  function calculate() {
-    let valid = 0, sum = 0, totalWeight = 0;
-    state.grades.forEach((item, index) => {
-      const grade = parseNumber(item.grade);
-      const weight = state.mode === "simple" ? 1 : parseNumber(item.weight);
-      const row = gradeList.children[index];
-      const error = row?.querySelector("[data-error]");
-      let message = "";
-      if (item.grade !== "" && !validGrade(grade)) message = "Note muss zwischen 1,00 und 6,00 liegen.";
-      else if (state.mode === "weighted" && item.weight !== "" && !validWeight(weight)) message = "Gewichtung muss größer als 0 sein.";
-      if (error) error.textContent = message;
-      if (!message && validGrade(grade) && validWeight(weight)) {
-        valid++;
-        sum += grade * weight;
-        totalWeight += weight;
-      }
-    });
-    const avg = totalWeight ? sum / totalWeight : NaN;
-    $("#averageResult").textContent = format(avg);
-    $("#heroAverage").textContent = format(avg);
-    $("#validCount").textContent = String(valid);
-    $("#totalWeight").textContent = state.mode === "simple" ? String(valid) : format(totalWeight);
-    $("#averageDetails").textContent = Number.isFinite(avg)
-      ? `${state.mode === "weighted" ? "Gewichteter" : "Einfacher"} Durchschnitt aus ${valid} gültigen ${valid === 1 ? "Note" : "Noten"}.`
-      : "Füge mindestens eine gültige Note hinzu.";
-    if (state.saveLocal) localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }
-
-  function load() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const saved = JSON.parse(raw);
-      if (saved && Array.isArray(saved.grades) && saved.grades.length) {
-        state = {
-          mode: saved.mode === "simple" ? "simple" : "weighted",
-          grades: saved.grades.map(g => ({
-            id: String(g.id || Date.now() + Math.random()),
-            subject: String(g.subject || ""),
-            grade: String(g.grade ?? ""),
-            weight: String(g.weight ?? "1")
-          })),
-          saveLocal: Boolean(saved.saveLocal)
-        };
-      }
-    } catch (_) {
-      // Defekte lokale Daten werden ignoriert.
-    }
-  }
-
-  function deleteAll() {
-    state.grades = [DEFAULT_GRADE()];
-    localStorage.removeItem(STORAGE_KEY);
-    render();
-  }
-
-  gradeList.addEventListener("input", (event) => {
-    const row = event.target.closest(".grade-row");
-    if (row) {
-      updateItem(row);
-      calculate();
-    }
-  });
-
-  gradeList.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-action='delete']");
-    if (!button) return;
-    const row = button.closest(".grade-row");
-    state.grades = state.grades.filter(g => g.id !== row.dataset.id);
-    if (!state.grades.length) state.grades.push(DEFAULT_GRADE());
-    render();
-  });
-
-  $("#addGrade").addEventListener("click", () => {
-    state.grades.push(DEFAULT_GRADE());
-    render();
-    const inputs = gradeList.querySelectorAll("input[data-field='subject']");
-    inputs[inputs.length - 1]?.focus();
-  });
-
-  document.querySelectorAll(".mode-button").forEach(button => {
-    button.addEventListener("click", () => {
-      state.mode = button.dataset.mode;
-      render();
-    });
-  });
-
-  $("#clearAll").addEventListener("click", () => {
-    if (confirm("Wirklich alle Noten und lokal gespeicherten Eingaben löschen?")) deleteAll();
-  });
-
-  $("#saveLocal").addEventListener("change", (event) => {
-    state.saveLocal = event.target.checked;
-    if (state.saveLocal) localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    else localStorage.removeItem(STORAGE_KEY);
-  });
-
-  $("#themeToggle").addEventListener("click", () => {
-    const dark = document.documentElement.classList.toggle("dark");
-    localStorage.setItem("notenrechner-theme", dark ? "dark" : "light");
-  });
-
-  $("#targetForm").addEventListener("submit", (event) => {
-    event.preventDefault();
-    const current = parseNumber($("#currentAverage").value);
-    const previous = parseNumber($("#previousWeight").value);
-    const target = parseNumber($("#targetAverage").value);
-    const result = $("#targetResult");
-    result.hidden = false;
-
-    if (!validGrade(current) || !Number.isFinite(previous) || previous <= 0 || !validGrade(target)) {
-      result.className = "target-result error";
-      result.textContent = "Bitte gib einen aktuellen Durchschnitt und eine Zielnote zwischen 1,00 und 6,00 sowie eine positive bisherige Gewichtung ein.";
-      return;
-    }
-
-    const needed = target * (previous + 1) - current * previous;
-    result.className = "target-result";
-    if (needed < 1) {
-      result.innerHTML = "<strong>Du hast dein Ziel bereits rechnerisch erreicht.</strong><br>Selbst eine sehr gute weitere Note würde dein Ziel nicht gefährden.";
-    } else if (needed > 6) {
-      result.innerHTML = `<strong>Mit nur einer weiteren Leistung ist das Ziel rechnerisch nicht erreichbar.</strong><br>Benötigte Note: <b>${format(needed)}</b> (schlechter als 6,00).`;
-    } else {
-      result.innerHTML = `<strong>Du brauchst ungefähr eine ${format(needed)}.</strong><br>Das ist der mathematische Wert für die nächste gleich gewichtete Leistung.`;
-    }
-  });
-
-  const savedTheme = localStorage.getItem("notenrechner-theme");
-  if (savedTheme === "dark") document.documentElement.classList.add("dark");
-  load();
-  render();
-})();
+if (typeof document !== 'undefined') document.addEventListener('DOMContentLoaded', init);
+if (typeof module !== 'undefined') module.exports = { parse, average, neededGrade, fmt };
