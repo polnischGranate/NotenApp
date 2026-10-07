@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Notenrechner: Notendurchschnitt berechnen & Zielnote ermitteln</title>
-<meta name="description" content="Kostenloser Notenrechner für Schüler: Notendurchschnitt berechnen, Gewichtungen berücksichtigen und herausfinden, welche Note du brauchst. Ohne Anmeldung, alles im Browser.">
+<meta name="description" content="Kostenloser Notenrechner für Schüler: Notendurchschnitt berechnen, Schulaufgaben und andere Leistungen berücksichtigen und herausfinden, welche Note du brauchst. Ohne Anmeldung, alles im Browser.">
 <link rel="canonical" href="https://DEINE-DOMAIN.de/"><!-- TODO: Domain eintragen -->
 <meta property="og:type" content="website">
 <meta property="og:locale" content="de_DE">
 <meta property="og:title" content="NotenRechner – Noten einfach berechnen">
-<meta property="og:description" content="Notendurchschnitt, Gewichtungen und Zielnote berechnen – kostenlos und ohne Anmeldung.">
+<meta property="og:description" content="Notendurchschnitt und Zielnote berechnen – kostenlos und ohne Anmeldung.">
 <meta property="og:url" content="https://DEINE-DOMAIN.de/"><!-- TODO -->
 <!-- TODO: og:image (1200x630) ergänzen -->
 <meta name="theme-color" content="#0f6b5c">
@@ -24,48 +24,56 @@
 <main>
 <div class="hero"><div class="wrap">
 <h1>NotenRechner – Noten einfach berechnen</h1>
-<p>Berechne deinen Notendurchschnitt, berücksichtige Gewichtungen und finde heraus, welche Note du für dein Ziel brauchst.</p><br>
+<p>Berechne deinen Notendurchschnitt, berücksichtige Schulaufgaben und andere Leistungen und finde heraus, welche Note du für dein Ziel brauchst.</p><br>
 <a class="btn" href="#rechner">Noten berechnen</a>
 </div></div>
 <div class="wrap">
 <section id="rechner">
 <h2>Notendurchschnitt berechnen</h2>
-<div class="card">
-<fieldset class="modes" style="border:0;padding:0;margin:0 0 1rem"><legend class="hint">Berechnungsart</legend>
-<label><input type="radio" name="mode" value="w" checked> Gewichtet</label>
-<label><input type="radio" name="mode" value="s"> Alle Noten gleich</label>
-</fieldset>
-<ul id="rows"></ul>
+<p class="hint">Alle Fächer zählen gleich. Pro Fach gilt: (Schulaufgabenschnitt + Schulaufgabenschnitt + Schnitt der übrigen Leistungen) ÷ 3.</p>
+<ul id="subjects" style="list-style:none;margin:0 0 1rem;padding:0;display:grid;gap:.75rem"></ul>
 <div class="actions">
-<button type="button" class="btn" id="add">Fach hinzufügen</button>
+<button type="button" class="btn" id="add-subject">Fach hinzufügen</button>
 <button type="button" class="btn ghost" id="example">Beispiel laden</button>
 </div>
 <p class="result" id="result" role="status" aria-live="polite"></p>
-</div>
 </section>
 
 <aside class="ad-slot" aria-label="Platzhalter für Werbung" data-ad-slot="top">[PLATZHALTER Werbefläche – derzeit leer. Werbe-Code erst nach Klärung von Recht & Einwilligung einbinden.]</aside>
 
 <section id="zielnote">
 <h2>Zielnote berechnen: Welche Note brauche ich?</h2>
+<h3>Notenvorschau</h3>
 <form class="card" id="goal" novalidate>
 <div class="grid">
-<label>Aktueller Durchschnitt<input type="text" id="g-avg" inputmode="decimal" placeholder="z. B. 2,5"></label>
-<label>Gewichtung bisheriger Noten<input type="text" id="g-n" inputmode="decimal" placeholder="z. B. 4"></label>
-<label>Gewichtung nächste Leistung<input type="text" id="g-w" inputmode="decimal" value="1"></label>
-<label>Zielnote<input type="text" id="g-t" inputmode="decimal" placeholder="z. B. 2,0"></label>
+<label>Aktueller Schnitt<input type="text" id="g-avg" inputmode="decimal" placeholder="z. B. 2,5"></label>
+<label>Anzahl bisheriger Noten<input type="text" id="g-n" inputmode="numeric" placeholder="z. B. 4"></label>
+<label>Gewünschter Schnitt<input type="text" id="g-t" inputmode="decimal" placeholder="z. B. 2,0"></label>
 </div>
 <p class="result" id="goal-result" role="status" aria-live="polite"></p>
-<p class="hint">Richtwert: Schulen gewichten und runden unterschiedlich. Maßgeblich sind die Regeln deiner Schule bzw. deiner Lehrkraft.</p>
+</form>
+<h3>Notenvorschau mit Schulaufgaben</h3>
+<p class="hint">Für ein einzelnes Fach: Gib Schnitt und Anzahl getrennt für Schulaufgaben und übrige Leistungen an. Schulaufgaben zählen doppelt.</p>
+<form class="card" id="goal-sa" novalidate>
+<div class="grid">
+<label>Schnitt Schulaufgaben<input type="text" id="s-sa" inputmode="decimal" placeholder="z. B. 2,5"></label>
+<label>Anzahl Schulaufgaben<input type="text" id="s-san" inputmode="numeric" placeholder="z. B. 2"></label>
+<label>Schnitt übrige Leistungen<input type="text" id="s-re" inputmode="decimal" placeholder="z. B. 2,0"></label>
+<label>Anzahl übrige Leistungen<input type="text" id="s-ren" inputmode="numeric" placeholder="z. B. 3"></label>
+<label>Gewünschter Fachschnitt<input type="text" id="s-t" inputmode="decimal" placeholder="z. B. 2,0"></label>
+<label>Nächste Note ist eine<select id="s-next" style="min-height:3rem;font:inherit;color:inherit;background:var(--bg);border:2px solid var(--line);border-radius:.6rem;padding:.5rem"><option value="sa">Schulaufgabe</option><option value="re">andere Leistung</option></select></label>
+</div>
+<p class="result" id="goal-sa-result" role="status" aria-live="polite"></p>
+<p class="hint">Richtwert: Schulen und Bundesländer gewichten und runden unterschiedlich. Maßgeblich sind die Regeln deiner Schule bzw. deiner Lehrkraft.</p>
 </form>
 </section>
 
 <section id="infos">
 <h2>So wird gerechnet</h2>
-<h3>Gewichteter Durchschnitt</h3>
-<p>Jede Note wird mit ihrer Gewichtung multipliziert, die Summe wird durch die Summe der Gewichtungen geteilt. Beispiel: Mathe 2 (doppelt), Deutsch 1, Englisch 3 ergibt (2·2 + 1 + 3) ÷ 4 = 2,00.</p>
+<h3>So wird der Durchschnitt gebildet</h3>
+<p>Pro Fach zählen alle Schulaufgaben zusammen als ein Schnitt, alle übrigen Leistungen (Stegreifaufgabe, Abfrage, Präsentation, Mitarbeit) als zweiter Schnitt. Der Fachschnitt ist (Schulaufgabenschnitt + Schulaufgabenschnitt + Schnitt der übrigen Leistungen) ÷ 3. Beispiel: Schulaufgaben Ø 2, übrige Leistungen Ø 1 ergibt (2 + 2 + 1) ÷ 3 = 1,67. Gibt es nur eine der beiden Gruppen, zählt nur diese. Der Gesamtschnitt ist der Durchschnitt aller Fachschnitte; alle Fächer zählen gleich.</p>
 <h3>Welche Note brauche ich?</h3>
-<p>Aus deinem bisherigen Durchschnitt, dessen Gewicht und deinem Wunschdurchschnitt ermittelt der Rechner die Note, die die nächste Leistung haben muss. Das Ergebnis ist ein Richtwert.</p>
+<p>Aus deinem bisherigen Schnitt, der Anzahl deiner Noten und deinem Wunschschnitt ermittelt der Rechner die Note, die die nächste Leistung haben muss. Das Ergebnis ist ein Richtwert.</p>
 <h3>Deine Daten bleiben bei dir</h3>
 <p>Alle Berechnungen laufen in deinem Browser. Optional kannst du Eingaben lokal auf deinem Gerät speichern und jederzeit löschen.</p>
 <div class="actions">
